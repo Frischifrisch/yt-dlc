@@ -52,17 +52,16 @@ class ArkenaIE(InfoExtractor):
 
     @staticmethod
     def _extract_url(webpage):
-        # See https://support.arkena.com/display/PLAY/Ways+to+embed+your+video
-        mobj = re.search(
+        if mobj := re.search(
             r'<iframe[^>]+src=(["\'])(?P<url>(?:https?:)?//play\.arkena\.com/embed/avp/.+?)\1',
-            webpage)
-        if mobj:
-            return mobj.group('url')
+            webpage,
+        ):
+            return mobj['url']
 
     def _real_extract(self, url):
         mobj = re.match(self._VALID_URL, url)
-        video_id = mobj.group('id')
-        account_id = mobj.group('account_id')
+        video_id = mobj['id']
+        account_id = mobj['account_id']
 
         # Handle http://video.arkena.com/play2/embed/player URL
         if not video_id:
@@ -73,9 +72,10 @@ class ArkenaIE(InfoExtractor):
                 raise ExtractorError('Invalid URL', expected=True)
 
         playlist = self._download_json(
-            'https://play.arkena.com/config/avp/v2/player/media/%s/0/%s/?callbackMethod=_'
-            % (video_id, account_id),
-            video_id, transform_source=strip_jsonp)['Playlist'][0]
+            f'https://play.arkena.com/config/avp/v2/player/media/{video_id}/0/{account_id}/?callbackMethod=_',
+            video_id,
+            transform_source=strip_jsonp,
+        )['Playlist'][0]
 
         media_info = playlist['MediaInfo']
         title = media_info['Title']

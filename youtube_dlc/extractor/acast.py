@@ -55,18 +55,18 @@ class ACastIE(InfoExtractor):
     def _real_extract(self, url):
         channel, display_id = re.match(self._VALID_URL, url).groups()
         s = self._download_json(
-            'https://feeder.acast.com/api/v1/shows/%s/episodes/%s' % (channel, display_id),
-            display_id)
+            f'https://feeder.acast.com/api/v1/shows/{channel}/episodes/{display_id}',
+            display_id,
+        )
         media_url = s['url']
         if re.search(r'[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}', display_id):
-            episode_url = s.get('episodeUrl')
-            if episode_url:
+            if episode_url := s.get('episodeUrl'):
                 display_id = episode_url
             else:
                 channel, display_id = re.match(self._VALID_URL, s['link']).groups()
         cast_data = self._download_json(
-            'https://play-api.acast.com/splash/%s/%s' % (channel, display_id),
-            display_id)['result']
+            f'https://play-api.acast.com/splash/{channel}/{display_id}', display_id
+        )['result']
         e = cast_data['episode']
         title = e.get('name') or s['title']
         return {
@@ -118,17 +118,22 @@ class ACastChannelIE(InfoExtractor):
 
     def _fetch_page(self, channel_slug, page):
         casts = self._download_json(
-            self._API_BASE_URL + 'channels/%s/acasts?page=%s' % (channel_slug, page),
-            channel_slug, note='Download page %d of channel data' % page)
+            f'{self._API_BASE_URL}channels/{channel_slug}/acasts?page={page}',
+            channel_slug,
+            note='Download page %d of channel data' % page,
+        )
         for cast in casts:
             yield self.url_result(
-                'https://play.acast.com/s/%s/%s' % (channel_slug, cast['url']),
-                'ACast', cast['id'])
+                f"https://play.acast.com/s/{channel_slug}/{cast['url']}",
+                'ACast',
+                cast['id'],
+            )
 
     def _real_extract(self, url):
         channel_slug = self._match_id(url)
         channel_data = self._download_json(
-            self._API_BASE_URL + 'channels/%s' % channel_slug, channel_slug)
+            f'{self._API_BASE_URL}channels/{channel_slug}', channel_slug
+        )
         entries = OnDemandPagedList(functools.partial(
             self._fetch_page, channel_slug), self._PAGE_SIZE)
         return self.playlist_result(entries, compat_str(

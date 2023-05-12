@@ -69,7 +69,7 @@ class AmericasTestKitchenIE(InfoExtractor):
 
         return {
             '_type': 'url_transparent',
-            'url': 'https://player.zype.com/embed/%s.js?api_key=jZ9GUhRmxcPvX7M3SlfejB6Hle9jyHTdk2jVxG7wOHPLODgncEKVdPYBhuz9iWXQ' % zype_id,
+            'url': f'https://player.zype.com/embed/{zype_id}.js?api_key=jZ9GUhRmxcPvX7M3SlfejB6Hle9jyHTdk2jVxG7wOHPLODgncEKVdPYBhuz9iWXQ',
             'ie_key': 'Zype',
             'title': title,
             'description': description,

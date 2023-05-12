@@ -51,10 +51,11 @@ class AbcNewsVideoIE(AMPIE):
 
     def _real_extract(self, url):
         mobj = re.match(self._VALID_URL, url)
-        display_id = mobj.group('display_id')
-        video_id = mobj.group('id')
+        display_id = mobj['display_id']
+        video_id = mobj['id']
         info_dict = self._extract_feed_info(
-            'http://abcnews.go.com/video/itemfeed?id=%s' % video_id)
+            f'http://abcnews.go.com/video/itemfeed?id={video_id}'
+        )
         info_dict.update({
             'id': video_id,
             'display_id': display_id,
@@ -104,8 +105,8 @@ class AbcNewsIE(InfoExtractor):
 
     def _real_extract(self, url):
         mobj = re.match(self._VALID_URL, url)
-        display_id = mobj.group('display_id')
-        video_id = mobj.group('id')
+        display_id = mobj['display_id']
+        video_id = mobj['id']
 
         webpage = self._download_webpage(url, video_id)
         video_url = self._search_regex(
@@ -115,10 +116,12 @@ class AbcNewsIE(InfoExtractor):
         youtube_url = YoutubeIE._extract_url(webpage)
 
         timestamp = None
-        date_str = self._html_search_regex(
+        if date_str := self._html_search_regex(
             r'<span[^>]+class="timestamp">([^<]+)</span>',
-            webpage, 'timestamp', fatal=False)
-        if date_str:
+            webpage,
+            'timestamp',
+            fatal=False,
+        ):
             tz_offset = 0
             if date_str.endswith(' ET'):  # Eastern Time
                 tz_offset = -5

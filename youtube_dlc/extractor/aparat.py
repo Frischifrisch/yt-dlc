@@ -43,8 +43,9 @@ class AparatIE(InfoExtractor):
             # http://www.aparat.com/video/video/config/videohash/%video_id
             # but the URL in there does not work
             webpage = self._download_webpage(
-                'http://www.aparat.com/video/video/embed/vt/frame/showvideo/yes/videohash/' + video_id,
-                video_id)
+                f'http://www.aparat.com/video/video/embed/vt/frame/showvideo/yes/videohash/{video_id}',
+                video_id,
+            )
 
         options = self._parse_json(
             self._search_regex(
@@ -71,14 +72,21 @@ class AparatIE(InfoExtractor):
                 else:
                     ext = mimetype2ext(item.get('type'))
                     label = item.get('label')
-                    formats.append({
-                        'url': file_url,
-                        'ext': ext,
-                        'format_id': 'http-%s' % (label or ext),
-                        'height': int_or_none(self._search_regex(
-                            r'(\d+)[pP]', label or '', 'height',
-                            default=None)),
-                    })
+                    formats.append(
+                        {
+                            'url': file_url,
+                            'ext': ext,
+                            'format_id': f'http-{label or ext}',
+                            'height': int_or_none(
+                                self._search_regex(
+                                    r'(\d+)[pP]',
+                                    label or '',
+                                    'height',
+                                    default=None,
+                                )
+                            ),
+                        }
+                    )
         self._sort_formats(
             formats, field_preference=('height', 'width', 'tbr', 'format_id'))
 

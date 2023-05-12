@@ -287,10 +287,8 @@ class BBCCoUkIE(InfoExtractor):
             headers={'Referer': self._LOGIN_URL})
 
         if self._LOGIN_URL in urlh.geturl():
-            error = clean_html(get_element_by_class('form-message', response))
-            if error:
-                raise ExtractorError(
-                    'Unable to login: %s' % error, expected=True)
+            if error := clean_html(get_element_by_class('form-message', response)):
+                raise ExtractorError(f'Unable to login: {error}', expected=True)
             raise ExtractorError('Unable to log in')
 
     def _real_initialize(self):
@@ -345,8 +343,9 @@ class BBCCoUkIE(InfoExtractor):
 
     def _raise_extractor_error(self, media_selection_error):
         raise ExtractorError(
-            '%s returned error: %s' % (self.IE_NAME, media_selection_error.id),
-            expected=True)
+            f'{self.IE_NAME} returned error: {media_selection_error.id}',
+            expected=True,
+        )
 
     def _download_media_selector(self, programme_id):
         last_exception = None
@@ -393,14 +392,17 @@ class BBCCoUkIE(InfoExtractor):
                     transfer_format = connection.get('transferFormat')
                     format_id = supplier or conn_kind or protocol
                     if service:
-                        format_id = '%s_%s' % (service, format_id)
+                        format_id = f'{service}_{format_id}'
                     # ASX playlist
                     if supplier == 'asx':
-                        for i, ref in enumerate(self._extract_asx_playlist(connection, programme_id)):
-                            formats.append({
-                                'url': ref,
-                                'format_id': 'ref%s_%s' % (i, format_id),
-                            })
+                        formats.extend(
+                            {'url': ref, 'format_id': f'ref{i}_{format_id}'}
+                            for i, ref in enumerate(
+                                self._extract_asx_playlist(
+                                    connection, programme_id
+                                )
+                            )
+                        )
                     elif transfer_format == 'dash':
                         formats.extend(self._extract_mpd_formats(
                             href, programme_id, mpd_id=format_id, fatal=False))
@@ -413,10 +415,11 @@ class BBCCoUkIE(InfoExtractor):
                                 re.sub(self._USP_RE, r'/\1.ism/\1.m3u8', href),
                                 programme_id, ext='mp4', entry_protocol='m3u8_native',
                                 m3u8_id=format_id, fatal=False)
-                            for f in usp_formats:
-                                if f.get('height') and f['height'] > 720:
-                                    continue
-                                formats.append(f)
+                            formats.extend(
+                                f
+                                for f in usp_formats
+                                if not f.get('height') or f['height'] <= 720
+                            )
                     elif transfer_format == 'hds':
                         formats.extend(self._extract_f4m_formats(
                             href, programme_id, f4m_id=format_id, fatal=False))
@@ -428,37 +431,35 @@ class BBCCoUkIE(InfoExtractor):
                             'filesize': file_size,
                         }
                         if kind == 'video':
-                            fmt.update({
+                            fmt |= {
                                 'width': width,
                                 'height': height,
                                 'tbr': bitrate,
                                 'vcodec': encoding,
-                            })
+                            }
                         else:
-                            fmt.update({
+                            fmt |= {
                                 'abr': bitrate,
                                 'acodec': encoding,
                                 'vcodec': 'none',
-                            })
+                            }
                         if protocol in ('http', 'https'):
                             # Direct link
-                            fmt.update({
-                                'url': href,
-                            })
+                            fmt['url'] = href
                         elif protocol == 'rtmp':
                             application = connection.get('application', 'ondemand')
                             auth_string = connection.get('authString')
                             identifier = connection.get('identifier')
                             server = connection.get('server')
-                            fmt.update({
-                                'url': '%s://%s/%s?%s' % (protocol, server, application, auth_string),
+                            fmt |= {
+                                'url': f'{protocol}://{server}/{application}?{auth_string}',
                                 'play_path': identifier,
-                                'app': '%s?%s' % (application, auth_string),
+                                'app': f'{application}?{auth_string}',
                                 'page_url': 'http://www.bbc.co.uk',
                                 'player_url': 'http://www.bbc.co.uk/emp/releases/iplayer/revisions/617463_618125_4/617463_618125_4_emp.swf',
                                 'rtmp_live': False,
                                 'ext': 'flv',
-                            })
+                            }
                         else:
                             continue
                         formats.append(fmt)
@@ -469,11 +470,12 @@ class BBCCoUkIE(InfoExtractor):
     def _download_playlist(self, playlist_id):
         try:
             playlist = self._download_json(
-                'http://www.bbc.co.uk/programmes/%s/playlist.json' % playlist_id,
-                playlist_id, 'Downloading playlist JSON')
+                f'http://www.bbc.co.uk/programmes/{playlist_id}/playlist.json',
+                playlist_id,
+                'Downloading playlist JSON',
+            )
 
-            version = playlist.get('defaultAvailableVersion')
-            if version:
+            if version := playlist.get('defaultAvailableVersion'):
                 smp_config = version['smpConfig']
                 title = smp_config['title']
                 description = smp_config['summary']
@@ -498,7 +500,8 @@ class BBCCoUkIE(InfoExtractor):
 
     def _process_legacy_playlist(self, playlist_id):
         return self._process_legacy_playlist_url(
-            'http://www.bbc.co.uk/iplayer/playlist/%s' % playlist_id, playlist_id)
+            f'http://www.bbc.co.uk/iplayer/playlist/{playlist_id}', playlist_id
+        )
 
     def _download_legacy_playlist_url(self, url, playlist_id=None):
         return self._download_xml(
@@ -509,13 +512,13 @@ class BBCCoUkIE(InfoExtractor):
         if no_items is not None:
             reason = no_items.get('reason')
             if reason == 'preAvailability':
-                msg = 'Episode %s is not yet available' % playlist_id
+                msg = f'Episode {playlist_id} is not yet available'
             elif reason == 'postAvailability':
-                msg = 'Episode %s is no longer available' % playlist_id
+                msg = f'Episode {playlist_id} is no longer available'
             elif reason == 'noMedia':
-                msg = 'Episode %s is not currently available' % playlist_id
+                msg = f'Episode {playlist_id} is not currently available'
             else:
-                msg = 'Episode %s is not available: %s' % (playlist_id, reason)
+                msg = f'Episode {playlist_id} is not available: {reason}'
             raise ExtractorError(msg, expected=True)
 
         for item in self._extract_items(playlist):
@@ -553,20 +556,23 @@ class BBCCoUkIE(InfoExtractor):
 
         webpage = self._download_webpage(url, group_id, 'Downloading video page')
 
-        error = self._search_regex(
+        if error := self._search_regex(
             r'<div\b[^>]+\bclass=["\']smp__message delta["\'][^>]*>([^<]+)<',
-            webpage, 'error', default=None)
-        if error:
+            webpage,
+            'error',
+            default=None,
+        ):
             raise ExtractorError(error, expected=True)
 
         programme_id = None
         duration = None
 
-        tviplayer = self._search_regex(
+        if tviplayer := self._search_regex(
             r'mediator\.bind\(({.+?})\s*,\s*document\.getElementById',
-            webpage, 'player', default=None)
-
-        if tviplayer:
+            webpage,
+            'player',
+            default=None,
+        ):
             player = self._parse_json(tviplayer, group_id).get('player', {})
             duration = int_or_none(player.get('duration'))
             programme_id = player.get('vpid')
@@ -836,11 +842,7 @@ class BBCIE(BBCCoUkIE):
                 else super(BBCIE, cls).suitable(url))
 
     def _extract_from_media_meta(self, media_meta, video_id):
-        # Direct links to media in media metadata (e.g.
-        # http://www.bbc.com/turkce/haberler/2015/06/150615_telabyad_kentin_cogu)
-        # TODO: there are also f4m and m3u8 streams incorporated in playlist.sxml
-        source_files = media_meta.get('sourceFiles')
-        if source_files:
+        if source_files := media_meta.get('sourceFiles'):
             return [{
                 'url': f['url'],
                 'format_id': format_id,
@@ -849,13 +851,10 @@ class BBCIE(BBCCoUkIE):
                 'filesize': int_or_none(f.get('filesize')),
             } for format_id, f in source_files.items() if f.get('url')], []
 
-        programme_id = media_meta.get('externalId')
-        if programme_id:
+        if programme_id := media_meta.get('externalId'):
             return self._download_media_selector(programme_id)
 
-        # Process playlist.sxml as legacy playlist
-        href = media_meta.get('href')
-        if href:
+        if href := media_meta.get('href'):
             playlist = self._download_legacy_playlist_url(href)
             _, _, _, _, formats, subtitles = self._extract_from_legacy_playlist(playlist, video_id)
             return formats, subtitles

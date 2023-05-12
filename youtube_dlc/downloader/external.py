@@ -40,7 +40,7 @@ class ExternalFD(FileDownloader):
             # correct and expected termination thus all postprocessing
             # should take place
             retval = 0
-            self.to_screen('[%s] Interrupted by user' % self.get_basename())
+            self.to_screen(f'[{self.get_basename()}] Interrupted by user')
 
         if retval == 0:
             status = {
@@ -52,10 +52,10 @@ class ExternalFD(FileDownloader):
                 fsize = os.path.getsize(encodeFilename(tmpfilename))
                 self.to_screen('\r[%s] Downloaded %s bytes' % (self.get_basename(), fsize))
                 self.try_rename(tmpfilename, filename)
-                status.update({
+                status |= {
                     'downloaded_bytes': fsize,
                     'total_bytes': fsize,
-                })
+                }
             self._hook_progress(status)
             return True
         else:
@@ -117,7 +117,7 @@ class CurlFD(ExternalFD):
         cmd = [self.exe, '--location', '-o', tmpfilename]
         if info_dict.get('http_headers') is not None:
             for key, val in info_dict['http_headers'].items():
-                cmd += ['--header', '%s: %s' % (key, val)]
+                cmd += ['--header', f'{key}: {val}']
 
         cmd += self._bool_option('--continue-at', 'continuedl', '-', '0')
         cmd += self._valueless_option('--silent', 'noprogress')
@@ -154,7 +154,7 @@ class AxelFD(ExternalFD):
         cmd = [self.exe, '-o', tmpfilename]
         if info_dict.get('http_headers') is not None:
             for key, val in info_dict['http_headers'].items():
-                cmd += ['-H', '%s: %s' % (key, val)]
+                cmd += ['-H', f'{key}: {val}']
         cmd += self._configuration_args()
         cmd += ['--', info_dict['url']]
         return cmd
@@ -167,7 +167,7 @@ class WgetFD(ExternalFD):
         cmd = [self.exe, '-O', tmpfilename, '-nv', '--no-cookies']
         if info_dict.get('http_headers') is not None:
             for key, val in info_dict['http_headers'].items():
-                cmd += ['--header', '%s: %s' % (key, val)]
+                cmd += ['--header', f'{key}: {val}']
         cmd += self._option('--limit-rate', 'ratelimit')
         retry = self._option('--tries', 'retries')
         if len(retry) == 2:
@@ -189,13 +189,12 @@ class Aria2cFD(ExternalFD):
         cmd = [self.exe, '-c']
         cmd += self._configuration_args([
             '--min-split-size', '1M', '--max-connection-per-server', '4'])
-        dn = os.path.dirname(tmpfilename)
-        if dn:
+        if dn := os.path.dirname(tmpfilename):
             cmd += ['--dir', dn]
         cmd += ['--out', os.path.basename(tmpfilename)]
         if info_dict.get('http_headers') is not None:
             for key, val in info_dict['http_headers'].items():
-                cmd += ['--header', '%s: %s' % (key, val)]
+                cmd += ['--header', f'{key}: {val}']
         cmd += self._option('--interface', 'source_address')
         cmd += self._option('--all-proxy', 'proxy')
         cmd += self._bool_option('--check-certificate', 'nocheckcertificate', 'false', 'true', '=')
@@ -214,7 +213,7 @@ class HttpieFD(ExternalFD):
 
         if info_dict.get('http_headers') is not None:
             for key, val in info_dict['http_headers'].items():
-                cmd += ['%s:%s' % (key, val)]
+                cmd += [f'{key}:{val}']
         return cmd
 
 
@@ -269,15 +268,14 @@ class FFmpegFD(ExternalFD):
                 ''.join('%s: %s\r\n' % (key, val) for key, val in headers.items())]
 
         env = None
-        proxy = self.params.get('proxy')
-        if proxy:
+        if proxy := self.params.get('proxy'):
             if not re.match(r'^[\da-zA-Z]+://', proxy):
-                proxy = 'http://%s' % proxy
+                proxy = f'http://{proxy}'
 
             if proxy.startswith('socks'):
                 self.report_warning(
-                    '%s does not support SOCKS proxies. Downloading is likely to fail. '
-                    'Consider adding --hls-prefer-native to your command.' % self.get_basename())
+                    f'{self.get_basename()} does not support SOCKS proxies. Downloading is likely to fail. Consider adding --hls-prefer-native to your command.'
+                )
 
             # Since December 2015 ffmpeg supports -http_proxy option (see
             # http://git.videolan.org/?p=ffmpeg.git;a=commit;h=b4eb1f29ebddd60c41a2eb39f5af701e38e0d3fd)
@@ -359,11 +357,11 @@ class AVconvFD(FFmpegFD):
     pass
 
 
-_BY_NAME = dict(
-    (klass.get_basename(), klass)
+_BY_NAME = {
+    klass.get_basename(): klass
     for name, klass in globals().items()
     if name.endswith('FD') and name != 'ExternalFD'
-)
+}
 
 
 def list_external_downloaders():

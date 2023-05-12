@@ -50,14 +50,15 @@ class APAIE(InfoExtractor):
 
         webpage = self._download_webpage(url, video_id)
 
-        jwplatform_id = self._search_regex(
-            r'media[iI]d\s*:\s*["\'](?P<id>[a-zA-Z0-9]{8})', webpage,
-            'jwplatform id', default=None)
-
-        if jwplatform_id:
+        if jwplatform_id := self._search_regex(
+            r'media[iI]d\s*:\s*["\'](?P<id>[a-zA-Z0-9]{8})',
+            webpage,
+            'jwplatform id',
+            default=None,
+        ):
             return self.url_result(
-                'jwplatform:' + jwplatform_id, ie='JWPlatform',
-                video_id=video_id)
+                f'jwplatform:{jwplatform_id}', ie='JWPlatform', video_id=video_id
+            )
 
         sources = self._parse_json(
             self._search_regex(

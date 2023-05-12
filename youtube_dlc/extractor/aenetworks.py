@@ -42,7 +42,10 @@ class AENetworksBaseIE(ThePlatformIE):
             m_url = self._sign_url(m_url, self._THEPLATFORM_KEY, self._THEPLATFORM_SECRET)
             try:
                 tp_formats, tp_subtitles = self._extract_theplatform_smil(
-                    m_url, video_id, 'Downloading %s SMIL data' % (q.get('switch') or q['assetTypes']))
+                    m_url,
+                    video_id,
+                    f"Downloading {q.get('switch') or q['assetTypes']} SMIL data",
+                )
             except ExtractorError as e:
                 last_e = e
                 continue
@@ -145,11 +148,16 @@ class AENetworksIE(AENetworksBaseIE):
             url_parts = show_path.split('/')
             url_parts_len = len(url_parts)
             if url_parts_len == 1:
-                entries = []
-                for season_url_path in re.findall(r'(?s)<li[^>]+data-href="(/shows/%s/season-\d+)"' % url_parts[0], webpage):
-                    entries.append(self.url_result(
-                        compat_urlparse.urljoin(url, season_url_path), 'AENetworks'))
-                if entries:
+                if entries := [
+                    self.url_result(
+                        compat_urlparse.urljoin(url, season_url_path), 'AENetworks'
+                    )
+                    for season_url_path in re.findall(
+                        r'(?s)<li[^>]+data-href="(/shows/%s/season-\d+)"'
+                        % url_parts[0],
+                        webpage,
+                    )
+                ]:
                     return self.playlist_result(
                         entries, self._html_search_meta('aetn:SeriesId', webpage),
                         self._html_search_meta('aetn:SeriesTitle', webpage))

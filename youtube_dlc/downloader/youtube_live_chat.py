@@ -13,7 +13,7 @@ class YoutubeLiveChatReplayFD(FragmentFD):
 
     def real_download(self, filename, info_dict):
         video_id = info_dict['video_id']
-        self.to_screen('[%s] Downloading live chat' % self.FD_NAME)
+        self.to_screen(f'[{self.FD_NAME}] Downloading live chat')
 
         test = self.params.get('test', False)
 
@@ -32,7 +32,7 @@ class YoutubeLiveChatReplayFD(FragmentFD):
             var_patt = b'var\\s+ytInitialData\\s*=\\s*(.*?)(?<=});'
             for patt in window_patt, var_patt:
                 try:
-                    raw_json = re.search(patt, data).group(1)
+                    raw_json = re.search(patt, data)[1]
                     return json.loads(raw_json)
                 except AttributeError:
                     continue

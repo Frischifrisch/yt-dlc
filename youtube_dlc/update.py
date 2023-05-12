@@ -37,7 +37,7 @@ def update_binary(ydl):
 
     filename = compat_realpath(sys.executable if hasattr(sys, 'frozen') else sys.argv[0])
     build_hash = sha256sum(filename)
-    ydl.to_screen('Current Build Hash %s' % build_hash)
+    ydl.to_screen(f'Current Build Hash {build_hash}')
 
     # Download and check versions info
     try:
@@ -59,9 +59,8 @@ def update_binary(ydl):
                 break
         if download_url:
             return ydl._opener.open(download_url).read().decode('utf-8')
-        else:
-            ydl.to_screen('ERROR: can\'t obtain SHA256SUMS. Please try again later.')
-            return None
+        ydl.to_screen('ERROR: can\'t obtain SHA256SUMS. Please try again later.')
+        return None
 
     sha256sums = download_sha256sums()
     sha256sums_dict = dict(_.split(':') in sha256sums for _ in sha256sums.split('\n'))
@@ -70,7 +69,7 @@ def update_binary(ydl):
         if build_hash in sha256sums_dict.values():
             ydl.to_screen('SHA256 checksum successfully validated.')
         if __version__.split('.') >= sha256sums_version.split('.') and __version__.split('.') >= latest_version.split('.'):
-            ydl.to_screen('youtube-dlc is up to date (%s)' % __version__)
+            ydl.to_screen(f'youtube-dlc is up to date ({__version__})')
             return
         else:
             ydl.to_screen('Something is wrong here. Trying to update anyway.')
@@ -78,13 +77,13 @@ def update_binary(ydl):
         if build_hash in sha256sums_dict.values():
             ydl.to_screen('SHA256 checksum successfully validated.')
         if __version__.split('.') >= latest_version.split('.'):
-            ydl.to_screen('youtube-dlc is up to date (%s)' % __version__)
+            ydl.to_screen(f'youtube-dlc is up to date ({__version__})')
             return
 
-    if not latest_version == sha256sums_version:
+    if latest_version != sha256sums_version:
         ydl.to_screen('WARNING: available youtube-dlc versions differ. Trying to update anyway.')
 
-    ydl.to_screen('Updating to version ' + latest_version + ' ...')
+    ydl.to_screen(f'Updating to version {latest_version} ...')
 
     version_labels = {
         'zip_3': '',
@@ -93,21 +92,28 @@ def update_binary(ydl):
     }
 
     def get_bin_info(bin_or_exe, version):
-        label = version_labels['%s_%s' % (bin_or_exe, version)]
-        return next((_ for _ in latest_json['assets'] if _['name'] == 'youtube-dlc%s' % label), {})
+        label = version_labels[f'{bin_or_exe}_{version}']
+        return next(
+            (
+                _
+                for _ in latest_json['assets']
+                if _['name'] == f'youtube-dlc{label}'
+            ),
+            {},
+        )
 
     if not os.access(filename, os.W_OK):
-        return ydl.to_screen('no write permissions on %s' % filename)
+        return ydl.to_screen(f'no write permissions on {filename}')
 
     # PyInstaller
     if hasattr(sys, 'frozen'):
         exe = filename
         directory = os.path.dirname(exe)
         if not os.access(directory, os.W_OK):
-            return ydl.to_screen('no write permissions on %s' % directory)
+            return ydl.to_screen(f'no write permissions on {directory}')
         try:
-            if os.path.exists(filename + '.old'):
-                os.remove(filename + '.old')
+            if os.path.exists(f'{filename}.old'):
+                os.remove(f'{filename}.old')
         except (IOError, OSError):
             return ydl.to_screen('unable to remove the old version')
 
@@ -123,42 +129,46 @@ def update_binary(ydl):
             return ydl.to_screen('unable to download latest version')
 
         try:
-            with open(exe + '.new', 'wb') as outf:
+            with open(f'{exe}.new', 'wb') as outf:
                 outf.write(newcontent)
         except (IOError, OSError):
             return ydl.to_screen('unable to write the new version')
 
-        expected_sum = sha256sums_dict.get('youtube-dlc%s' % version_labels['%s_%s' % ('exe', arch)])
+        expected_sum = sha256sums_dict.get(
+            f"youtube-dlc{version_labels[f'exe_{arch}']}"
+        )
         if not expected_sum:
             ydl.report_warning('no hash information found for the release')
-        elif sha256sum(exe + '.new') != expected_sum:
+        elif sha256sum(f'{exe}.new') != expected_sum:
             ydl.to_screen('unable to verify the new executable')
             try:
-                os.remove(exe + '.new')
+                os.remove(f'{exe}.new')
             except OSError:
                 return ydl.to_screen('unable to remove corrupt download')
 
         try:
-            os.rename(exe, exe + '.old')
+            os.rename(exe, f'{exe}.old')
         except (IOError, OSError):
             return ydl.to_screen('unable to move current version')
         try:
-            os.rename(exe + '.new', exe)
+            os.rename(f'{exe}.new', exe)
         except (IOError, OSError):
             ydl.to_screen('unable to overwrite current version')
-            os.rename(exe + '.old', exe)
+            os.rename(f'{exe}.old', exe)
             return
         try:
             # Continues to run in the background
             subprocess.Popen(
-                'ping 127.0.0.1 -n 5 -w 1000 & del /F "%s.old"' % exe,
-                shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            ydl.to_screen('Updated youtube-dlc to version %s' % latest_version)
+                f'ping 127.0.0.1 -n 5 -w 1000 & del /F "{exe}.old"',
+                shell=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            ydl.to_screen(f'Updated youtube-dlc to version {latest_version}')
             return True  # Exit app
         except OSError:
             ydl.to_screen('unable to delete old version')
 
-    # Zip unix package
     elif isinstance(globals().get('__loader__'), zipimporter):
         try:
             url = get_bin_info('zip', '3').get('browser_download_url')
@@ -170,7 +180,7 @@ def update_binary(ydl):
         except (IOError, OSError, StopIteration):
             return ydl.to_screen('unable to download latest version')
 
-        expected_sum = sha256sums_dict.get('youtube-dlc%s' % version_labels['%s_%s' % ('zip', '3')])
+        expected_sum = sha256sums_dict.get(f"youtube-dlc{version_labels['zip_3']}")
         if not expected_sum:
             ydl.report_warning('no hash information found for the release')
         elif hashlib.sha256(newcontent).hexdigest() != expected_sum:
@@ -182,15 +192,17 @@ def update_binary(ydl):
         except (IOError, OSError):
             return ydl.to_screen('unable to overwrite current version')
 
-    ydl.to_screen('Updated youtube-dlc to version %s; Restart youtube-dlc to use the new version' % latest_version)
+    ydl.to_screen(
+        f'Updated youtube-dlc to version {latest_version}; Restart youtube-dlc to use the new version'
+    )
 
 
 def update_self(to_screen, verbose, opener):
     """Update the program file with the latest version from the repository"""
 
     UPDATE_URL = 'https://blackjack4494.github.io//update/'
-    VERSION_URL = UPDATE_URL + 'LATEST_VERSION'
-    JSON_URL = UPDATE_URL + 'versions.json'
+    VERSION_URL = f'{UPDATE_URL}LATEST_VERSION'
+    JSON_URL = f'{UPDATE_URL}versions.json'
     # UPDATES_RSA_KEY = (0x9d60ee4d8f805312fdb15a62f87b95bd66177b91df176765d13514a0f1754bcd2057295c5b6f1d35daa6742c3ffc9a82d3e118861c207995a8031e151d863c9927e304576bc80692bc8e094896fcf11b66f3e29e04e3a71e9a11558558acea1840aec37fc396fb6b65dc81a1c4144e03bd1c011de62e3f1357b327d08426fe93, 65537)
 
     def sha256sum():
@@ -202,7 +214,7 @@ def update_self(to_screen, verbose, opener):
                 h.update(mv[:n])
         return h.hexdigest()
 
-    to_screen('Current Build Hash %s' % sha256sum())
+    to_screen(f'Current Build Hash {sha256sum()}')
 
     if not isinstance(globals().get('__loader__'), zipimporter) and not hasattr(sys, 'frozen'):
         to_screen('It looks like you installed youtube-dlc with a package manager, pip, setup.py or a tarball. Please use that to update.')
@@ -223,7 +235,7 @@ def update_self(to_screen, verbose, opener):
         to_screen('Visit https://github.com/blackjack4494/yt-dlc/releases/latest')
         return
     if newversion == __version__:
-        to_screen('youtube-dlc is up-to-date (' + __version__ + ')')
+        to_screen(f'youtube-dlc is up-to-date ({__version__})')
         return
 
     # Download and check versions info
@@ -246,11 +258,12 @@ def update_self(to_screen, verbose, opener):
 
     def version_tuple(version_str):
         return tuple(map(int, version_str.split('.')))
+
     if version_tuple(__version__) >= version_tuple(version_id):
-        to_screen('youtube-dlc is up to date (%s)' % __version__)
+        to_screen(f'youtube-dlc is up to date ({__version__})')
         return
 
-    to_screen('Updating to version ' + version_id + ' ...')
+    to_screen(f'Updating to version {version_id} ...')
     version = versions_info['versions'][version_id]
 
     print_notes(to_screen, versions_info['versions'])
@@ -261,7 +274,7 @@ def update_self(to_screen, verbose, opener):
     filename = compat_realpath(sys.executable if hasattr(sys, 'frozen') else sys.argv[0])
 
     if not os.access(filename, os.W_OK):
-        to_screen('ERROR: no write permissions on %s' % filename)
+        to_screen(f'ERROR: no write permissions on {filename}')
         return
 
     # Py2EXE
@@ -269,7 +282,7 @@ def update_self(to_screen, verbose, opener):
         exe = filename
         directory = os.path.dirname(exe)
         if not os.access(directory, os.W_OK):
-            to_screen('ERROR: no write permissions on %s' % directory)
+            to_screen(f'ERROR: no write permissions on {directory}')
             return
 
         try:
@@ -289,7 +302,7 @@ def update_self(to_screen, verbose, opener):
             return
 
         try:
-            with open(exe + '.new', 'wb') as outf:
+            with open(f'{exe}.new', 'wb') as outf:
                 outf.write(newcontent)
         except (IOError, OSError):
             if verbose:
@@ -317,7 +330,6 @@ start /b "" cmd /c del "%%~f0"&exit /b"
             to_screen('ERROR: unable to overwrite current version')
             return
 
-    # Zip unix package
     elif isinstance(globals().get('__loader__'), zipimporter):
         try:
             urlh = opener.open(version['bin'][0])
@@ -356,8 +368,7 @@ def get_notes(versions, fromVersion):
 
 
 def print_notes(to_screen, versions, fromVersion=__version__):
-    notes = get_notes(versions, fromVersion)
-    if notes:
+    if notes := get_notes(versions, fromVersion):
         to_screen('PLEASE NOTE:')
         for note in notes:
             to_screen(note)

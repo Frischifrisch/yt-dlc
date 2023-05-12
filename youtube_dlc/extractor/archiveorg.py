@@ -39,7 +39,8 @@ class ArchiveOrgIE(InfoExtractor):
     def _real_extract(self, url):
         video_id = self._match_id(url)
         webpage = self._download_webpage(
-            'http://archive.org/embed/' + video_id, video_id)
+            f'http://archive.org/embed/{video_id}', video_id
+        )
         jwplayer_playlist = self._parse_json(self._search_regex(
             r"(?s)Play\('[^']+'\s*,\s*(\[.+\])\s*,\s*{.*?}\)",
             webpage, 'jwplayer playlist'), video_id)
@@ -50,9 +51,12 @@ class ArchiveOrgIE(InfoExtractor):
             return metadata.get(field, [None])[0]
 
         metadata = self._download_json(
-            'http://archive.org/details/' + video_id, video_id, query={
+            f'http://archive.org/details/{video_id}',
+            video_id,
+            query={
                 'output': 'json',
-            })['metadata']
+            },
+        )['metadata']
         info.update({
             'title': get_optional(metadata, 'title') or info.get('title'),
             'description': clean_html(get_optional(metadata, 'description')),

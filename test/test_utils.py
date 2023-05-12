@@ -245,8 +245,9 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(expand_path(env('HOME')), compat_getenv('HOME'))
         self.assertEqual(expand_path('~'), compat_getenv('HOME'))
         self.assertEqual(
-            expand_path('~/%s' % env('youtube_dlc_EXPATH_PATH')),
-            '%s/expanded' % compat_getenv('HOME'))
+            expand_path(f"~/{env('youtube_dlc_EXPATH_PATH')}"),
+            f"{compat_getenv('HOME')}/expanded",
+        )
 
     def test_prepend_extension(self):
         self.assertEqual(prepend_extension('abc.ext', 'temp'), 'abc.temp.ext')
@@ -622,8 +623,7 @@ class TestUtil(unittest.TestCase):
             def get_page(pagenum):
                 firstid = pagenum * pagesize
                 upto = min(size, pagenum * pagesize + pagesize)
-                for i in range(firstid, upto):
-                    yield i
+                yield from range(firstid, upto)
 
             pl = OnDemandPagedList(get_page, pagesize)
             got = pl.getslice(*sliceargs)

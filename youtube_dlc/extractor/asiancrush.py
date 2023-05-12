@@ -45,18 +45,20 @@ class AsianCrushIE(InfoExtractor):
 
     def _real_extract(self, url):
         mobj = re.match(self._VALID_URL, url)
-        host = mobj.group('host')
-        video_id = mobj.group('id')
+        host = mobj['host']
+        video_id = mobj['id']
 
         webpage = self._download_webpage(url, video_id)
 
         entry_id, partner_id, title = [None] * 3
 
-        vars = self._parse_json(
+        if vars := self._parse_json(
             self._search_regex(
-                r'iEmbedVars\s*=\s*({.+?})', webpage, 'embed vars',
-                default='{}'), video_id, fatal=False)
-        if vars:
+                r'iEmbedVars\s*=\s*({.+?})', webpage, 'embed vars', default='{}'
+            ),
+            video_id,
+            fatal=False,
+        ):
             entry_id = vars.get('entry_id')
             partner_id = vars.get('partner_id')
             title = vars.get('vid_label')
@@ -66,8 +68,10 @@ class AsianCrushIE(InfoExtractor):
                 r'\bentry_id["\']\s*:\s*["\'](\d+)', webpage, 'entry id')
 
         player = self._download_webpage(
-            'https://api.%s/embeddedVideoPlayer' % host, video_id,
-            query={'id': entry_id})
+            f'https://api.{host}/embeddedVideoPlayer',
+            video_id,
+            query={'id': entry_id},
+        )
 
         kaltura_id = self._search_regex(
             r'entry_id["\']\s*:\s*(["\'])(?P<id>(?:(?!\1).)+)\1', player,
@@ -84,7 +88,7 @@ class AsianCrushIE(InfoExtractor):
 
         return {
             '_type': 'url_transparent',
-            'url': 'kaltura:%s:%s' % (partner_id, kaltura_id),
+            'url': f'kaltura:{partner_id}:{kaltura_id}',
             'ie_key': KalturaIE.ie_key(),
             'id': video_id,
             'title': title,

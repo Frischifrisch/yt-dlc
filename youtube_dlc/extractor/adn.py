@@ -61,8 +61,9 @@ class ADNIE(InfoExtractor):
         enc_subtitles = self._download_webpage(
             urljoin(self._BASE_URL, sub_path),
             video_id, 'Downloading subtitles location', fatal=False) or '{}'
-        subtitle_location = (self._parse_json(enc_subtitles, video_id, fatal=False) or {}).get('location')
-        if subtitle_location:
+        if subtitle_location := (
+            self._parse_json(enc_subtitles, video_id, fatal=False) or {}
+        ).get('location'):
             enc_subtitles = self._download_webpage(
                 urljoin(self._BASE_URL, subtitle_location),
                 video_id, 'Downloading subtitles data', fatal=False,
@@ -71,11 +72,13 @@ class ADNIE(InfoExtractor):
             return None
 
         # http://animedigitalnetwork.fr/components/com_vodvideo/videojs/adn-vjs.min.js
-        dec_subtitles = intlist_to_bytes(aes_cbc_decrypt(
-            bytes_to_intlist(compat_b64decode(enc_subtitles[24:])),
-            bytes_to_intlist(binascii.unhexlify(self._K + '4b8ef13ec1872730')),
-            bytes_to_intlist(compat_b64decode(enc_subtitles[:24]))
-        ))
+        dec_subtitles = intlist_to_bytes(
+            aes_cbc_decrypt(
+                bytes_to_intlist(compat_b64decode(enc_subtitles[24:])),
+                bytes_to_intlist(binascii.unhexlify(f'{self._K}4b8ef13ec1872730')),
+                bytes_to_intlist(compat_b64decode(enc_subtitles[:24])),
+            )
+        )
         subtitles_json = self._parse_json(
             dec_subtitles[:-compat_ord(dec_subtitles[-1])].decode(),
             None, fatal=False)
@@ -132,10 +135,9 @@ Format: Marked,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text'''
                 'Downloading player config JSON metadata')['player']
 
         video_info = {}
-        video_info_str = self._search_regex(
-            r'videoInfo\s*=\s*({.+});', webpage,
-            'video info', fatal=False)
-        if video_info_str:
+        if video_info_str := self._search_regex(
+            r'videoInfo\s*=\s*({.+});', webpage, 'video info', fatal=False
+        ):
             video_info = self._parse_json(
                 video_info_str, video_id, fatal=False) or {}
 
@@ -158,15 +160,19 @@ Format: Marked,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text'''
             encrypted_message = long_to_bytes(pow(bytes_to_long(padded_message), e, n))
             authorization = base64.b64encode(encrypted_message).decode()
             links_data = self._download_json(
-                urljoin(self._BASE_URL, links_url), video_id,
-                'Downloading links JSON metadata', headers={
-                    'Authorization': 'Bearer ' + authorization,
-                })
+                urljoin(self._BASE_URL, links_url),
+                video_id,
+                'Downloading links JSON metadata',
+                headers={'Authorization': f'Bearer {authorization}'},
+            )
             links = links_data.get('links') or {}
             metas = metas or links_data.get('meta') or {}
-            sub_path = sub_path or links_data.get('subtitles') or \
-                'index.php?option=com_vodapi&task=subtitles.getJSON&format=json&id=' + video_id
-            sub_path += '&token=' + token
+            sub_path = (
+                sub_path
+                or links_data.get('subtitles')
+                or f'index.php?option=com_vodapi&task=subtitles.getJSON&format=json&id={video_id}'
+            )
+            sub_path += f'&token={token}'
             error = links_data.get('error')
         title = metas.get('title') or video_info['title']
 
@@ -175,10 +181,15 @@ Format: Marked,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text'''
             if not isinstance(qualities, dict):
                 continue
             for quality, load_balancer_url in qualities.items():
-                load_balancer_data = self._download_json(
-                    load_balancer_url, video_id,
-                    'Downloading %s %s JSON metadata' % (format_id, quality),
-                    fatal=False) or {}
+                load_balancer_data = (
+                    self._download_json(
+                        load_balancer_url,
+                        video_id,
+                        f'Downloading {format_id} {quality} JSON metadata',
+                        fatal=False,
+                    )
+                    or {}
+                )
                 m3u8_url = load_balancer_data.get('location')
                 if not m3u8_url:
                     continue
@@ -192,7 +203,7 @@ Format: Marked,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text'''
         if not error:
             error = options.get('error')
         if not formats and error:
-            raise ExtractorError('%s said: %s' % (self.IE_NAME, error), expected=True)
+            raise ExtractorError(f'{self.IE_NAME} said: {error}', expected=True)
         self._sort_formats(formats)
 
         return {

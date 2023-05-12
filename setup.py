@@ -29,16 +29,19 @@ else:
         resfiles = []
         for fn in files:
             if not os.path.exists(fn):
-                warnings.warn('Skipping file %s since it is not present. Type  make  to build all automatically generated files.' % fn)
+                warnings.warn(
+                    f'Skipping file {fn} since it is not present. Type  make  to build all automatically generated files.'
+                )
             else:
                 resfiles.append(fn)
         data_files.append((dirname, resfiles))
 
     params = {
         'data_files': data_files,
+        'entry_points': {
+            'console_scripts': ['youtube-dlc = youtube_dlc:main']
+        },
     }
-    #if setuptools_available:
-    params['entry_points'] = {'console_scripts': ['youtube-dlc = youtube_dlc:main']}
     #else:
     #    params['scripts'] = ['bin/youtube-dlc']
 

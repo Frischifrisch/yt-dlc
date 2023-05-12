@@ -63,7 +63,8 @@ class BeamProLiveIE(BeamProBaseIE):
         channel_name = self._match_id(url)
 
         chan = self._download_json(
-            '%s/channels/%s' % (self._API_BASE, channel_name), channel_name)
+            f'{self._API_BASE}/channels/{channel_name}', channel_name
+        )
 
         if chan.get('online') is False:
             raise ExtractorError(
@@ -143,7 +144,7 @@ class BeamProVodIE(BeamProBaseIE):
 
         format_id = [vod_type]
         if isinstance(data.get('Height'), compat_str):
-            format_id.append('%sp' % data['Height'])
+            format_id.append(f"{data['Height']}p")
 
         return [{
             'url': urljoin(vod['baseUrl'], filename),
@@ -159,14 +160,13 @@ class BeamProVodIE(BeamProBaseIE):
     def _real_extract(self, url):
         vod_id = self._match_id(url)
 
-        vod_info = self._download_json(
-            '%s/recordings/%s' % (self._API_BASE, vod_id), vod_id)
+        vod_info = self._download_json(f'{self._API_BASE}/recordings/{vod_id}', vod_id)
 
         state = vod_info.get('state')
         if state != 'AVAILABLE':
             raise ExtractorError(
-                'VOD %s is not available (state: %s)' % (vod_id, state),
-                expected=True)
+                f'VOD {vod_id} is not available (state: {state})', expected=True
+            )
 
         formats = []
         thumbnail_url = None
@@ -189,6 +189,6 @@ class BeamProVodIE(BeamProBaseIE):
             'view_count': int_or_none(vod_info.get('viewsTotal')),
             'formats': formats,
         }
-        info.update(self._extract_channel_info(vod_info.get('channel') or {}))
+        info |= self._extract_channel_info(vod_info.get('channel') or {})
 
         return info

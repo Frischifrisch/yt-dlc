@@ -18,21 +18,14 @@ _OLD_VERSION = _LATEST_VERSION.rsplit("-", 1)
 if len(_OLD_VERSION) > 0:
     old_ver = _OLD_VERSION[0]
 
-old_rev = ''
-if len(_OLD_VERSION) > 1:
-    old_rev = _OLD_VERSION[1]
-
+old_rev = _OLD_VERSION[1] if len(_OLD_VERSION) > 1 else ''
 now = datetime.now()
 # ver = f'{datetime.today():%Y.%m.%d}'
 ver = now.strftime("%Y.%m.%d")
 rev = ''
 
 if old_ver == ver:
-    if old_rev:
-        rev = int(old_rev) + 1
-    else:
-        rev = 1
-
+    rev = int(old_rev) + 1 if old_rev else 1
 _SEPARATOR = '-'
 
 version = _SEPARATOR.join(filter(None, [ver, str(rev)]))
@@ -41,9 +34,7 @@ print(version)
 
 version_list = ver.split(".")
 _year, _month, _day = [int(value) for value in version_list]
-_rev = 0
-if rev:
-    _rev = rev
+_rev = rev if rev else 0
 _ver_tuple = _year, _month, _day, _rev
 
 version_file = VSVersionInfo(
@@ -63,7 +54,9 @@ version_file = VSVersionInfo(
                 StringTable(
                     "040904B0",
                     [
-                        StringStruct("Comments", "Youtube-dlc Command Line Interface."),
+                        StringStruct(
+                            "Comments", "Youtube-dlc Command Line Interface."
+                        ),
                         StringStruct("CompanyName", "theidel@uni-bremen.de"),
                         StringStruct("FileDescription", FILE_DESCRIPTION),
                         StringStruct("FileVersion", version),
@@ -74,13 +67,15 @@ version_file = VSVersionInfo(
                         ),
                         StringStruct("OriginalFilename", "youtube-dlc.exe"),
                         StringStruct("ProductName", "Youtube-dlc"),
-                        StringStruct("ProductVersion", version + " | git.io/JUGsM"),
+                        StringStruct(
+                            "ProductVersion", f"{version} | git.io/JUGsM"
+                        ),
                     ],
                 )
             ]
         ),
-        VarFileInfo([VarStruct("Translation", [0, 1200])])
-    ]
+        VarFileInfo([VarStruct("Translation", [0, 1200])]),
+    ],
 )
 
 PyInstaller.__main__.run([
